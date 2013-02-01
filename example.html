@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Knockout.LiveCollection Example</title>
+</head>
+<body>
+
+    <h1>Knockout.LiveCollection Example</h1>
+
+
+
+    <!-- Dependencies -->
+    <script src="lib/knockout-2.2.1.js"></script>
+    <script src="lib/underscore-min.js"></script>
+
+    <!-- Collection and example -->
+    <script src="src/knockout.LiveCollection.js"></script>
+    <script>
+        (function (global) {
+            // Example
+            //
+            //
+        
+            var you = ko.observable('friend');
+            global.you = you;
+
+            // Implement observable array 
+            var greetings = ko.observableArray([
+                { id: 1, expression: 'Howdy', excitement: 10 },
+                { id: 3, expression: 'Hello', excitement: 1 },
+                { id: 2, expression: 'Hi', excitement: 5 }
+            ]);
+            global.greetings = greetings;
+
+            var messages = ko.LiveCollection(greetings)
+                .filter(function (greeting) {
+                    return greeting.excitement >= 5;
+                }).map(function (greeting) {
+                    return ko.computed(function () {
+                        return greeting.expression + ' ' + you();  
+                    }, this);
+                });
+
+            messages.subscribe(function (newMessages) {
+                _.each(newMessages, function (message) { console.log(message()); })
+            })
+        })(window);
+    </script>
+</body></html>
