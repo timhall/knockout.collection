@@ -3,28 +3,49 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Knockout.LiveCollection Example</title>
+    <title>Knockout.collection Example</title>
 </head>
 <body>
 
-    <h1>Knockout.LiveCollection Example</h1>
+    <h1>Knockout.collection Example</h1>
+    Name:
+    <input type="text" data-bind="value: you"></input>
 
-
+    Greetings:
+    <ul data-bind="foreach: greetings">
+        <li>
+            Message: <span data-bind="text: expression"></span>,
+            Render: <span data-bind="text: new Date().getSeconds()"></span>
+        </li>
+    </ul>
+    <a href="#" data-bind="click: addGreeting">Add Greeting</a>
+    <hr>
+    Happy (filtered):
+    <ul data-bind="foreach: happy">
+        <li>
+            Message: <span data-bind="text: expression"></span>,
+            Render: <span data-bind="text: new Date().getSeconds()"></span>
+        </li>
+    </ul>
+    <hr>
+    Messages (mapped):
+    <ul data-bind="foreach: messages">
+        <li>
+            Message: <span data-bind="text: $data"></span>,
+            Render: <span data-bind="text: new Date().getSeconds()"></span>
+        </li>
+    </ul>
 
     <!-- Dependencies -->
     <script src="lib/knockout-2.2.1.js"></script>
     <script src="lib/underscore-min.js"></script>
 
     <!-- Collection and example -->
-    <script src="src/knockout.LiveCollection.js"></script>
+    <script src="src/knockout.collection.js"></script>
     <script>
         (function (global) {
-            // Example
-            //
-            //
-        
+            // Example       
             var you = ko.observable('friend');
-            global.you = you;
 
             // Implement observable array 
             var greetings = ko.observableArray([
@@ -32,20 +53,38 @@
                 { id: 3, expression: 'Hello', excitement: 1 },
                 { id: 2, expression: 'Hi', excitement: 5 }
             ]);
-            global.greetings = greetings;
 
-            var messages = ko.LiveCollection(greetings)
+            var happy = ko.collection(greetings, 'id').filter(function (greeting) {
+                return greeting.excitement >= 5;
+            });
+
+            var messages = ko.collection(greetings, 'id')
                 .filter(function (greeting) {
                     return greeting.excitement >= 5;
-                }).map(function (greeting) {
+                })
+                .map(function (greeting) {
                     return ko.computed(function () {
-                        return greeting.expression + ' ' + you();  
-                    }, this);
+                        return greeting.expression + ' ' + you() + '!'; 
+                    });
                 });
 
-            messages.subscribe(function (newMessages) {
-                _.each(newMessages, function (message) { console.log(message()); })
-            })
+            var _id = 4;
+            var addGreeting = function () {
+                var excitement = Math.round(Math.random() * (10 - 1) + 1);
+                greetings.push({
+                    id: _id++, 
+                    expression: 'What\'s up! (' + excitement + '.' + _id + ')', 
+                    excitement: excitement
+                });
+            };
+
+            ko.applyBindings({
+                you: you,
+                greetings: greetings,
+                happy: happy,
+                messages: messages,
+                addGreeting: addGreeting
+            });
         })(window);
     </script>
 </body></html>
