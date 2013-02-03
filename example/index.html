@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>knockout.collection - Example</title>
+
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/bootstrap-responsive.min.css" />
+    <link rel="stylesheet" href="css/app.css" />
+
+    <script src="cssrefresh.js"></script>
+</head>
+<body><div class="container-fluid">
+
+    <h1>Messages</h1>
+    <h4>knockout.collection <a class="label label-info github-link" href="https://github.com/timhall/knockout.collection">Github</a></h4>
+
+    <div class="row-fluid">
+        <div class="span4 example-part">
+            <h2 class="example-part-header">Raw Data</h2>
+            
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="col-id">Id</th>
+                        <th class="col-from">From</th>
+                        <th>Content</th>
+                    </tr>
+                </thead>
+                <tbody data-bind="template: { foreach: rawData,
+                                              beforeRemove: fadeOut,
+                                              afterAdd: fadeIn }">
+                    <tr>
+                        <td data-bind="text: id"></td>
+                        <td data-bind="text: from"></td>
+                        <td>
+                            <p data-bind="text: subject"></p>
+                            <p class="details">
+                                Rendered at <span data-bind="text: new Date().getSeconds()"></span>
+                            </p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="span4 example-part">
+            <h2 class="example-part-header">Filtered</h2>
+            
+            Sender: 
+            <select data-bind="foreach: senders, value: senders.selected">
+                <option data-bind="text: $data"></option>
+            </select>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="col-id">Id</th>
+                        <th class="col-from">From</th>
+                        <th>Content</th>
+                    </tr>
+                </thead>
+                <tbody data-bind="template: { foreach: filtered,
+                                              beforeRemove: fadeOut,
+                                              afterAdd: fadeIn }">
+                    <tr class="highlight">
+                        <td data-bind="text: id"></td>
+                        <td data-bind="text: from"></td>
+                        <td>
+                            <p data-bind="text: subject"></p>
+                            <p class="details">
+                                Rendered at <span data-bind="text: new Date().getSeconds()"></span>
+                            </p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="span4 example-part">
+            <h2 class="example-part-header">Mapped</h2>
+            
+            <ul class="messages-list" data-bind="template: { foreach: mapped,
+                                                             beforeRemove: slideUp,
+                                                             afterAdd: slideDown }">
+                <li data-bind="text: $data" class="highlight"></li>
+            </ul>    
+        </div>
+    </div>
+</div>
+
+    <!-- Dependencies -->
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+    <script src="../lib/knockout-2.2.1.js"></script>
+    <script src="../lib/underscore-min.js"></script>
+
+    <!-- Collection and example -->
+    <script src="../src/knockout.collection.js"></script>
+    <script>
+        (function (global) {
+            var rawData = ko.observableArray([
+                { id: 1, from: 'Friend', subject: 'Lunch?', responses: ko.observable(0) },
+                { id: 2, from: 'Mom', subject: 'How come you never visit anymore?', responses: ko.observable(0) },
+                { id: 3, from: 'Boss', subject: 'TPS report status?', responses: ko.observable(0) },
+                { id: 4, from: 'Crush', subject: 'Coffee tonight?', responses: ko.observable(0) },
+                { id: 5, from: 'Boss', subject: 'Need you to come in on Saturday', responses: ko.observable(0) },
+                { id: 6, from: 'Friend', subject: 'Party on saturday', responses: ko.observable(0) },
+                { id: 7, from: 'Mom', subject: 'Did you see your sister\s pictures on The Facebook?', responses: ko.observable(0) },
+            ]);
+
+            var senders = ko.collection(rawData).pluck('from').unique();
+            senders.unshift('All');
+            senders.selected = ko.observable(senders()[0]);
+
+            var filtered = ko.collection(rawData, 'id').filter(function (message) {
+                if (senders.selected() == 'All') {
+                    return true;
+                } else {
+                    return message.from == senders.selected();
+                }
+            });
+
+            var mapped = ko.collection(filtered, 'id').map(function (message) {
+                return message.from + ' says "' + message.subject + '"';
+            });
+
+            var fadeOut = function (elem) {
+                if (elem.nodeType === 1) {
+                    $(elem).fadeOut();
+                }
+            };
+
+            var fadeIn = function (elem) {
+                if (elem.nodeType === 1) {
+                    $(elem).hide().fadeIn();
+                }
+            };
+
+            var slideUp = function(elem) {
+                if (elem.nodeType === 1) {
+                    $(elem).addClass('deleted').slideUp(200, function () { $(elem).remove(); })
+                } 
+            };
+            var slideDown = function(elem) { 
+                if (elem.nodeType === 1) {
+                    $(elem).hide().slideDown(200);
+                }
+            };
+
+            ko.applyBindings({
+                rawData: rawData,
+                senders: senders,
+                filtered: filtered,
+                mapped: mapped,
+                fadeIn: fadeIn,
+                fadeOut: fadeOut,
+                slideDown: slideDown,
+                slideUp: slideUp
+            });
+        })(window);
+    </script>
+</body></html>

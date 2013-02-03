@@ -1,3 +1,7 @@
+// knockout.collection
+// (c) Tim Hall - https://github.com/timhall/knockout.collection
+// License: MIT (http://www.opensource.org/licenses/mit-license.php)
+
 (function (ko, _) {
     
     /**
@@ -15,20 +19,31 @@
         // Setup new collection
         var collection = ko.observableArray(array());
 
-        // Store underlying array, id, and other helpers
+        // Store underlying array, id, and other internal
         collection._underlying = array;
         collection._key = key;
+        collection._subscriptions = [];
 
         // Add methods
-        collection.filter = filter;
-        collection.map = map;
+        collection.filter = collection.select = filter;
+        collection.map = collection.collect = map;
         collection.pluck = pluck;
+        collection.uniq = collection.unique = unique;
 
-        // Perform actions when array changes
+        // Store actions
         collection.actions = [];
-        collection._subscription = array.subscribe(function (values) {
+
+        // Update when subscription changes
+        collection.watch = function (observable) {
+            collection._subscriptions.push(observable.subscribe(function () {
+                updated(collection, collection._underlying());
+            }));
+        }
+
+        // Update when underlying array changes
+        collection._subscriptions.push(array.subscribe(function (values) {
             updated(collection, values);
-        });
+        }));
 
         // Keys
         collection.keys = getKeys(array(), key);
@@ -62,11 +77,11 @@
 
 
     /**
-     * Helper for creating actions
+     * Helpers for creating generic actions
      * 
      * @param {Function} action to apply to collection
      */
-    var action = collection._action = function (action) {
+    var genericAction = collection._genericAction = function (action) {
         return function () {
             var args = _.toArray(arguments),
                 context = this;
@@ -89,6 +104,39 @@
         }
     };
 
+    /**
+     * Helpers for creating interated actions
+     * 
+     * @param {Function} action to apply to collection
+     */
+    var iteratedAction = collection._iteratedAction = function (action) {
+        return function (iterator, context) {
+            // Set context
+            context = context || this;
+
+            // Subscribe to iterator changes
+            this.watch(ko.computed(function () {
+                iterator({});
+            }));
+
+            // Define wrapped action
+            var wrapped = function (collection) {
+                return action.call(context, collection, iterator, context);
+            };
+
+            // Store wrapped action for value updates
+            this.actions.push(wrapped);
+
+            // Update current value
+            var results = wrapped({ values: this(), keys: this.keys })
+            this( results.values );
+            this.keys = results.keys;
+
+            // Chain
+            return this;
+        }
+    };
+
 
     /**
      * Filter the collection
@@ -96,7 +144,7 @@
      *
      * @param {Function} iterator
      */
-    var filter = action(function (collection, iterator) {
+    var filter = iteratedAction(function (collection, iterator, context) {
         var filteredkeys = [];
         var results = _.filter(collection.values, function (item, index) {
             var keep = iterator(item, index);
@@ -104,7 +152,7 @@
                 filteredkeys.push(collection.keys[index]);
             }
             return keep;
-        });
+        }, context);
         
         return {
             values: results,
@@ -118,8 +166,8 @@
      *
      * @param {Function} iterator
      */
-    var map = action(function (collection, iterator) {
-        var results = _.map(collection.values, iterator);
+    var map = iteratedAction(function (collection, iterator, context) {
+        var results = _.map(collection.values, iterator, context);
 
         return {
             values: results,
@@ -133,12 +181,24 @@
      *
      * @param {String} propertyName
      */
-    var pluck = action(function (collection, propertyName) {
+    var pluck = genericAction(function (collection, propertyName) {
         var results = _.pluck(collection.values, propertyName);
 
         return {
             values: results,
             keys: collection.keys
+        };
+    });
+
+
+    /**
+     * Get unique values for collection
+     */
+    var unique = genericAction(function (collection) {
+        var results = _.uniq(collection.values);
+
+        return {
+            values: results
         };
     });
 
@@ -150,7 +210,11 @@
      * @param {Array} values
      */
     var patch = collection._patch = function (collection, updated) {
-        if (!_.isUndefined(collection()) && !_.isUndefined(collection._key)) {
+        if (!_.isUndefined(collection()) 
+            && !_.isUndefined(collection._key)
+            && (collection.keys && collection.keys.length > 0)
+            && (updated.keys && updated.keys.length > 0)) {
+
             // Remove items
             removeItems(collection, updated);
 

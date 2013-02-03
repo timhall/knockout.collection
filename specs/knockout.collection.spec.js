@@ -130,6 +130,32 @@ describe('Knockout.collection', function () {
         });
     });
 
+    describe('Updating', function () {
+        beforeEach(function () {
+            _spec.collection = ko.collection(ko.observableArray([
+                { id: 1, value: 'A' },
+                { id: 2, value: 'B' },
+                { id: 3, value: 'C' }
+            ]), 'id');
+        });
+
+        it('should update when observables inside iterator update', function () {
+            var filterBy = ko.observable('A');
+
+            var filtered = _spec.collection.filter(function (item) {
+                return item.value == filterBy();
+            });
+
+            expect(filtered().length).toEqual(1);
+            expect(filtered()[0].id).toEqual(1);
+
+            filterBy('B');
+
+            expect(filtered().length).toEqual(1);
+            expect(filtered()[0].id).toEqual(2);
+        })
+    })
+
     describe('Patch', function () {
         beforeEach(function () {
             _spec.collection = ko.collection(ko.observableArray([

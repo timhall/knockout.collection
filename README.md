@@ -8,10 +8,10 @@ Take the example of filtering a list of messages by sender:
 ```javascript
 // List of raw messages (e.g. from server)
 var messages = ko.observableArray([
-  { id: 1, content: 'Hi there!', from: 'Friend' },
-  { id: 2, content: 'Something important', from: 'Boss' },
-  { id: 3, content: 'Lunch?', from: 'Friend' },
-  { id: 4, content: 'Get back to work', from: 'Boss' }
+  { id: 1, subject: 'Hi there!', from: 'Friend' },
+  { id: 2, subject: 'Something important', from: 'Boss' },
+  { id: 3, subject: 'Lunch?', from: 'Friend' },
+  { id: 4, subject: 'Get back to work', from: 'Boss' }
 ]);
 
 // Load initial filtered list
@@ -61,7 +61,7 @@ Additionally, keys are pulled from the original data and maintained through each
 // Even though map gets rid of the key field in the output, 
 // changes are still patched based the original data
 var shortenedMessages = ko.collection(messages, 'id').map(function (message) {
-	return message.from + ' says ' + message.content;
+	return message.from + ' says ' + message.subject;
 });
 ```
 
@@ -75,13 +75,28 @@ var shortenedMessagesFromBoss = ko.collection(messages, 'id')
 		return message.from == 'Boss';
 	})
 	.map(function (message) {
-		return message.from + ' demands ' + message.content;
+		return message.from + ' demands ' + message.subject;
 	});
+```
+
+## Automatic Updating
+
+In addition to watching for changes to the original data, knockout.collection watches for changes in the iterator functions such as the `truthTest` for `filter` and `transform` for map. Any observable items that change inside the iterator function cause the collection to automatically update.
+
+```javascript
+var filterBy = ko.observable('Friend');
+
+var filtered = ko.collection(messages, 'id').filter(function (message) {
+    return message.from = filterBy();
+});
+
+// Changing filterBy causes filtered to automatically update
+filterBy('Boss');
 ```
 
 ## Available Functions
 
-### Filter
+### filter _(alias select)_
 
 `filter({function} truthTest)` 
 Filter data, returning all items that pass the given truth test.
@@ -92,24 +107,32 @@ var filtered = ko.collection(messages).filter(function (message) {
 });
 ```
 
-### Map
+### map _(alias collect)_
 
 `map({function} transformation)` 
 Map data through given transformation
 
 ```javascript
 var mapped = ko.collection(messages).map(function (message) {
-	return 'Message ' + message.id + ': ' + message.content;
+	return 'Message ' + message.id + ': ' + message.subject;
 });
 ```
 
-### Pluck
+### pluck
 
 `pluck({String} parameterName)` 
 Pluck specified property value from each item
 
 ```javascript
 var plucked = ko.collection(messages).pluck('from');
+```
+### unique _(alias uniq)_
+
+`unique()`
+Remove duplicates from collection. _Note, isn't compatible with patch_
+
+```javascript
+var unique = ko.collection(messages).unique();
 ```
 
 ## About
