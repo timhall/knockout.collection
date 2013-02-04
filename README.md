@@ -13,19 +13,23 @@ var messages = ko.observableArray([
   { id: 3, subject: 'Lunch?', from: 'Friend' },
   { id: 4, subject: 'Get back to work', from: 'Boss' }
 ]);
+var filterBy = ko.observable('Friend');
 
 // Load initial filtered list
 var messagesfromFriend = ko.observableArray(getMessagesFromFriend(messages());
 
-// Update filtered list whenever data changes
+// Update filtered list whenever data or filterBy changes
 messages.subscribe(function (newMessages) {
   messagesfromFriend(getMessagesFromFriend(newMessages));
+});
+filterBy.subscribe(function () {
+  messagesfromFriend(getMessagesFromFriend(messages()));
 });
 
 // Filter list of messages
 var getMessagesFromFriend = function (messages) {
   return _.filter(messages, function (message) {
-    return message.from == 'Friend';
+    return message.from == filterBy();
   });
 }
 ```
@@ -35,11 +39,11 @@ namely with knockout.collection:
 
 ```javascript
 var messagesFromFriend = ko.collection(messages).filter(function (message) {
-  return message.from == 'Friend';
+  return message.from == filterBy();
 });
 ```
 
-And that's it! The collection automatically updates when the messages data changes and applies any filters, mapping, and other helpers.
+And that's it! The collection automatically updates when the messages data or filterBy changes and applies any filters, mapping, and other helpers.
 
 ## Patching
 
@@ -55,7 +59,7 @@ ko.collection(messages, function (message) {
 });
 ```
 
-Additionally, keys are pulled from the original data and maintained through each processing step so that steps such as `map` that may not maintain the key can still have patched updates.
+Additionally, keys are pulled from the original data and maintained through each processing step so that steps such as `map` that may not maintain the `key` can still have patched updates.
 
 ```javascript
 // Even though map gets rid of the key field in the output, 
