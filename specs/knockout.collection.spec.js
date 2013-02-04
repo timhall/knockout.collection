@@ -69,14 +69,22 @@ describe('Knockout.collection', function () {
         });
 
         it('should only map when item is new or updated', function () {
-            var calltimes = 0;
+            var calltimes = 0,
+                data = ko.observableArray([
+                    { id: 1, value: 10 },
+                    { id: 2, value: 20 },
+                    { id: 3, value: 30 }
+                ]);
             
-            var mapped = _spec.collection.map(function (item) {
+            var mapped = ko.collection(data, 'id').map(function (item) {
                 calltimes++;
                 return item;
             });
 
             expect(calltimes).toEqual(3);
+
+            data.push({ id: 4, value: 40 });
+            expect(calltimes).toEqual(4);
         });
     });
 

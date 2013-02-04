@@ -192,13 +192,18 @@
      * @param {Function} iterator
      */
     var map = iteratedAction(function (collection, cache, iterator, context) {
-        var results = [];
+        var results = [],
+            key;
 
         if (!cache) {
             results = _.map(collection.values, iterator, context);
         } else {
-            _.each(collection.values, function (item) {    
-                results.push(iterator.call(context, item));
+            _.each(collection.values, function (item, index) {    
+                results.push(
+                    needsUpdating(item, index, collection, cache)
+                    ? iterator.call(context, item)
+                    : cache.values[index]
+                );
             })
         }
 
@@ -234,6 +239,20 @@
             values: results
         };
     });
+
+
+    var needsUpdating = function (item, index, collection, cache) {
+        var key = collection.keys[index],
+            cachedItem = cache.values[index];
+
+        return isNew(key, cache.keys) || isUpdated(item, cachedItem);
+    }
+    var isNew = function (key, cachedKeys) {
+        return _.indexOf(cachedKeys, key) < 0;
+    }
+    var isUpdated = function (item, cachedItem) {
+        return !isEqual(item, cachedItem);
+    }
 
 
     /** 
