@@ -139,7 +139,7 @@
             context = context || this;
 
             // Subscribe to iterator changes
-            var iterator = ko.wrap(iterator);
+            var iterator = ko.wrapper(iterator);
             this.watch(iterator);
 
             // Define wrapped action
