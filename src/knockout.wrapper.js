@@ -59,12 +59,16 @@
     /**
      * Watch specified callback for changes
      *
+     * Grafted liberally from ko.computed
+     * https://github.com/SteveSanderson/knockout
+     * (c) Steven Sanderson - http://knockoutjs.com/
+     *
      * @param {Function} callback
      * @return {subscribable}
      */
     var watcher = function (callback, context, options) {
         
-        var _hasBeenEvaluated = false,
+        var _hasBeenEvaluated = false;
             _isBeingEvaluated = false;
         
         options = options || {};
@@ -107,7 +111,7 @@
                 var disposalCandidates = ko.utils.arrayMap(_subscriptionsToDependencies, function(item) {return item.target;});
 
                 // Begin dependency detection and specify callback for found dependencies
-                dependencyDetection.begin(function(subscribable) {
+                dependencyDetection[dependencyBeginName](function(subscribable) {
                     var inOld;
                     if ((inOld = ko.utils.arrayIndexOf(disposalCandidates, subscribable)) >= 0)
                         disposalCandidates[inOld] = undefined; // Don't want to dispose this subscription, as it's still being used
@@ -151,9 +155,7 @@
         }
 
         // By here, "options" is always non-null
-        var disposeWhenNodeIsRemoved = options["disposeWhenNodeIsRemoved"] || options.disposeWhenNodeIsRemoved || null,
-            disposeWhen = options["disposeWhen"] || options.disposeWhen || function() { return false; },
-            dispose = disposeAllSubscriptionsToDependencies,
+        var dispose = disposeAllSubscriptionsToDependencies,
             _subscriptionsToDependencies = [];
 
         if (!context)
@@ -168,33 +170,27 @@
         // Initialize (evaluate callback and find dependencies)
         init();
 
-        // Build "disposeWhenNodeIsRemoved" and "disposeWhenNodeIsRemovedCallback" option values.
-        // But skip if isActive is false (there will never be any dependencies to dispose).
-        // (Note: "disposeWhenNodeIsRemoved" option both proactively disposes as soon as the node is removed using ko.removeNode(),
-        // plus adds a "disposeWhen" callback that, on each evaluation, disposes if the node was removed by some other means.)
-        if (disposeWhenNodeIsRemoved && isActive()) {
-            dispose = function() {
-                ko.utils.domNodeDisposal.removeDisposeCallback(disposeWhenNodeIsRemoved, arguments.callee);
-                disposeAllSubscriptionsToDependencies();
-            };
-            ko.utils.domNodeDisposal.addDisposeCallback(disposeWhenNodeIsRemoved, dispose);
-            var existingDisposeWhenFunction = disposeWhen;
-            disposeWhen = function () {
-                return !ko.utils.domNodeIsAttachedToDocument(disposeWhenNodeIsRemoved) || existingDisposeWhenFunction();
-            }
-        }
-
         return watcher;
     }
 
     // Locate knockout's internal dependency detection
-    // (as seen in knockout.deferred-updates, 
-    //  https://github.com/mbest/knockout-deferred-updates)
+    // From knockout.deferred-updates, 
+    // https://github.com/mbest/knockout-deferred-updates)
+    // (c) Michael Best, Steven Sanderson
+    // ---
+    function findNameMethodSignatureContaining(obj, match) {
+        for (var a in obj)
+            if (obj.hasOwnProperty(a) && obj[a].toString().indexOf(match) >= 0)
+                return a;
+    }
     function findSubObjectWithProperty(obj, prop) {
         for (var a in obj)
             if (obj.hasOwnProperty(a) && obj[a] && obj[a][prop])
                 return obj[a];
     }
-    dependencyDetection = findSubObjectWithProperty(ko, 'end');
+    var dependencyDetection = findSubObjectWithProperty(ko, 'end'),
+        dependencyBeginName = findNameMethodSignatureContaining(dependencyDetection, '.push({'),
+        dependencyRegisterName = findNameMethodSignatureContaining(dependencyDetection, '.length');
+    // ---
 
 })(ko, _);
