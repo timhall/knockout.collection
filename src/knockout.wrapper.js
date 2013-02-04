@@ -107,7 +107,7 @@
                 var disposalCandidates = ko.utils.arrayMap(_subscriptionsToDependencies, function(item) {return item.target;});
 
                 // Begin dependency detection and specify callback for found dependencies
-                ko.dependencyDetection.begin(function(subscribable) {
+                dependencyDetection.begin(function(subscribable) {
                     var inOld;
                     if ((inOld = ko.utils.arrayIndexOf(disposalCandidates, subscribable)) >= 0)
                         disposalCandidates[inOld] = undefined; // Don't want to dispose this subscription, as it's still being used
@@ -125,7 +125,7 @@
                 }
                 _hasBeenEvaluated = true;
             } finally {
-                ko.dependencyDetection.end();
+                dependencyDetection.end();
             }
 
             updated();
@@ -165,7 +165,7 @@
 
         ko.subscribable.call(watcher);
 
-        // Evaluate, unless deferEvaluation is true
+        // Initialize (evaluate callback and find dependencies)
         init();
 
         // Build "disposeWhenNodeIsRemoved" and "disposeWhenNodeIsRemovedCallback" option values.
@@ -188,11 +188,13 @@
     }
 
     // Locate knockout's internal dependency detection
+    // (as seen in knockout.deferred-updates, 
+    //  https://github.com/mbest/knockout-deferred-updates)
     function findSubObjectWithProperty(obj, prop) {
         for (var a in obj)
             if (obj.hasOwnProperty(a) && obj[a] && obj[a][prop])
                 return obj[a];
     }
-    ko.dependencyDetection = findSubObjectWithProperty(ko, 'end');
+    dependencyDetection = findSubObjectWithProperty(ko, 'end');
 
 })(ko, _);
