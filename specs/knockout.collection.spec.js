@@ -1,5 +1,5 @@
-/// <reference path="../lib/jasmine.js" />
-/// <reference path="../lib/sinon-1.4.2.js" />
+/// <reference path="content/jasmine.js" />
+/// <reference path="content/sinon-1.4.2.js" />
 /// <reference path="../lib/knockout-2.2.1.js" />
 /// <reference path="../lib/underscore-min.js" />
 /// <reference path="../src/knockout.collection.js" />
@@ -11,7 +11,7 @@ describe('Knockout.collection', function () {
         beforeEach(function () {
             _spec.data = ko.observableArray([1, 2, 3, 4, 5]);
             _spec.collection = ko.collection(_spec.data);
-        })
+        });
 
         it('should filter simple array', function () {
             var evens = _spec.collection.filter(function (item) {
@@ -66,6 +66,17 @@ describe('Knockout.collection', function () {
             _spec.data.push(4);
             expect(mapped().length).toEqual(4);
             expect(mapped()[3]).toEqual('A4');
+        });
+
+        it('should only map when item is new or updated', function () {
+            var calltimes = 0;
+            
+            var mapped = _spec.collection.map(function (item) {
+                calltimes++;
+                return item;
+            });
+
+            expect(calltimes).toEqual(3);
         });
     });
 
@@ -153,8 +164,8 @@ describe('Knockout.collection', function () {
 
             expect(filtered().length).toEqual(1);
             expect(filtered()[0].id).toEqual(2);
-        })
-    })
+        });
+    });
 
     describe('Patch', function () {
         beforeEach(function () {
@@ -239,6 +250,5 @@ describe('Knockout.collection', function () {
             ko.collection._sortItems(_spec.collection, updated);
             expect(_spec.collection()[0].id).toEqual(3);
         });
-    })
-
-})
+    });
+});

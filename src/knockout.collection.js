@@ -12,17 +12,27 @@
      * a given parent observable array
      * 
      * @param {observableArray} array to work with
-     * @param {String|Function} [id] attribute name or function
+     * @param {String|Function|Object} [key|options] attribute name or function for key or options object
      * @return {collection}
      */
-    var collection = function (array, key) {
+    var collection = function (array, options) {
         // Setup new collection
         var collection = ko.observableArray(array());
 
+        // Set options
+        if (_.isFunction(options) || _.isString(options)) {
+            collection.options = {
+                key: options,
+                cache: true
+            }    
+        } else {
+            collection.options = _.extend({}, { cache: true }, options);
+        }
+
         // Store underlying array, id, and other internal
         collection._underlying = array;
-        collection._key = key;
         collection._subscriptions = [];
+        collection._actionId = 0;
 
         // Add methods
         collection.filter = collection.select = filter;
@@ -46,7 +56,17 @@
         }));
 
         // Keys
-        collection.keys = getKeys(array(), key);
+        collection.keys = getKeys(array(), collection.options.key);
+
+        // Cache
+        collection._cache = [];
+        collection.cache = function (id, value) {
+            if (_.isUndefined(value)) {
+                return collection._cache[id];
+            } else {
+                collection._cache[id] = value;
+            }
+        }
 
         return collection;
     };
@@ -62,13 +82,13 @@
         // Save initial value as result
         var results = {
             values: values,
-            keys: getKeys(values, collection._key)
+            keys: getKeys(values, collection.options.key)
         };
         
         // Perform each action
         _.each(collection.actions, function (action) {
             // Perform action using result of previous
-            results = action(results);
+            results = action.action(results);
         });
 
         // Update collection value with result
@@ -84,15 +104,18 @@
     var genericAction = collection._genericAction = function (action) {
         return function () {
             var args = _.toArray(arguments),
+                parent = this,
                 context = this;
 
             // Define wrapped action
-            var wrapped = function (collection) {
-                return action.apply(context, [collection].concat(args));
+            var wrapped = function (collection, id) {
+                var results = action.apply(parent, [collection, parent.cache(id)].concat(args));
+                if (parent.options.cache) { parent.cache(id, results); }
+                return results;
             };
 
             // Store wrapped action for value updates
-            this.actions.push(wrapped);
+            this.actions.push({ id: collection._actionId++, action: wrapped });
 
             // Update current value
             var results = wrapped({ values: this(), keys: this.keys })
@@ -112,20 +135,22 @@
     var iteratedAction = collection._iteratedAction = function (action) {
         return function (iterator, context) {
             // Set context
+            var parent = this;
             context = context || this;
 
             // Subscribe to iterator changes
-            this.watch(ko.computed(function () {
-                iterator({});
-            }));
+            var iterator = ko.wrap(iterator);
+            this.watch(iterator);
 
             // Define wrapped action
-            var wrapped = function (collection) {
-                return action.call(context, collection, iterator, context);
+            var wrapped = function (collection, id) {
+                var results = action.call(parent, collection, parent.cache(id), iterator, context);
+                if (parent.options.cache) { parent.cache(id, results); }
+                return results;
             };
 
             // Store wrapped action for value updates
-            this.actions.push(wrapped);
+            this.actions.push({ id: collection._actionId++, action: wrapped });
 
             // Update current value
             var results = wrapped({ values: this(), keys: this.keys })
@@ -144,7 +169,7 @@
      *
      * @param {Function} iterator
      */
-    var filter = iteratedAction(function (collection, iterator, context) {
+    var filter = iteratedAction(function (collection, cache, iterator, context) {
         var filteredkeys = [];
         var results = _.filter(collection.values, function (item, index) {
             var keep = iterator(item, index);
@@ -166,8 +191,16 @@
      *
      * @param {Function} iterator
      */
-    var map = iteratedAction(function (collection, iterator, context) {
-        var results = _.map(collection.values, iterator, context);
+    var map = iteratedAction(function (collection, cache, iterator, context) {
+        var results = [];
+
+        if (!cache) {
+            results = _.map(collection.values, iterator, context);
+        } else {
+            _.each(collection.values, function (item) {    
+                results.push(iterator.call(context, item));
+            })
+        }
 
         return {
             values: results,
@@ -181,7 +214,7 @@
      *
      * @param {String} propertyName
      */
-    var pluck = genericAction(function (collection, propertyName) {
+    var pluck = genericAction(function (collection, cache, propertyName) {
         var results = _.pluck(collection.values, propertyName);
 
         return {
@@ -194,7 +227,7 @@
     /**
      * Get unique values for collection
      */
-    var unique = genericAction(function (collection) {
+    var unique = genericAction(function (collection, cache) {
         var results = _.uniq(collection.values);
 
         return {
@@ -211,7 +244,7 @@
      */
     var patch = collection._patch = function (collection, updated) {
         if (!_.isUndefined(collection()) 
-            && !_.isUndefined(collection._key)
+            && !_.isUndefined(collection.options.key)
             && (collection.keys && collection.keys.length > 0)
             && (updated.keys && updated.keys.length > 0)) {
 
